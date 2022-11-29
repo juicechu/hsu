@@ -185,6 +185,7 @@ class WorldCUPPredictor:
         #plt.ax_.set_title('AUC score is {0:0.2}'.format(roc_auc_score(df_Y_test, model.predict_proba(df_X_test)[:,1])))
         #plt.ax_.set_aspect(1)
 
+        """
         # Support Vector Machines
         svc = SVC(random_state=12345)
         svc.fit(df_X_train, df_Y_train)
@@ -254,6 +255,7 @@ class WorldCUPPredictor:
                                display_labels=clf.classes_)
         disp.plot()
         disp.ax_.set_title('Neural Network Accuracy: ' + str(accuracy))
+        """
         model = logmodel
         return model
 
@@ -287,7 +289,7 @@ class WorldCUPPredictor:
         wc_df.info()
 
         print(model.classes_) #print classes order
-        #margin = 0.05
+        win_margin = 0.05
         for group in wc_df['Group'].unique():
             print('___Starting group {}:___'.format(group))
 
@@ -309,37 +311,43 @@ class WorldCUPPredictor:
 
                 # Model Output
                 win_prob = model.predict_proba(newdata)[0]  #predict
-                #print(win_prob)
+                print(win_prob)
                 home_win_prob = win_prob[0]
                 away_win_prob = win_prob[1]
                 draw_prob = win_prob[2]
 
                 # Determining Win / Draw / Lose based on home_win_prob
                 points = 0
-                if draw_prob >= 1/3:
+                if draw_prob > home_win_prob and draw_prob > away_win_prob:
                     points = 1
-                elif home_win_prob < away_win_prob:
+                elif (home_win_prob + win_margin) < away_win_prob:
                     wc_df.loc[away, 'group_points'] += 3
                     wc_df.loc[away, 'weight_points'] += (away_win_prob) * 3
                     away_win_prob += draw_prob
                     wc_df.loc[away, 'group_prob'] *= away_win_prob
-                    print("{} wins with {:.6f}".format(away, away_win_prob))
-                elif home_win_prob > away_win_prob:
+                    #print("{} wins with {:.6f}".format(away, away_win_prob))
+                elif (away_win_prob + win_margin) < home_win_prob:
                     points = 3
                     wc_df.loc[home, 'group_points'] += 3
                     wc_df.loc[home, 'weight_points'] += home_win_prob * 3
                     home_win_prob += draw_prob
                     wc_df.loc[home, 'group_prob'] *= home_win_prob
-                    print("{} wins with {:.6f}".format(home, home_win_prob))
+                    #print("{} wins with {:.6f}".format(home, home_win_prob))
+                else:
+                    points = 1
 
                 if points == 1:
                     wc_df.loc[home, 'group_points'] += 1
                     wc_df.loc[away, 'group_points'] += 1
                     wc_df.loc[home, 'weight_points'] += draw_prob * 1
                     wc_df.loc[away, 'weight_points'] += draw_prob * 1
+                    wc_df.loc[home, 'group_prob'] *= draw_prob
+                    wc_df.loc[away, 'group_prob'] *= draw_prob
+                    #print("Draw with {:.6f}".format(draw_prob))
 
                 wc_df.loc[home, 'group_prob_obj'].probs.append(home_win_prob)
                 wc_df.loc[away, 'group_prob_obj'].probs.append(away_win_prob)
+        wc_df.loc[wc_df['group_prob'] == 1, 'group_prob'] = 0
         wc_df['group_prob_pickle'] = pickle.dumps(wc_df['group_prob_obj'])
         ##insert to mongodb
         mongo = MongoClient()
@@ -385,6 +393,7 @@ class WorldCUPPredictor:
         next_round_wc = next_round_wc.reset_index()
         next_round_wc = next_round_wc.loc[pairing]
         next_round_wc = next_round_wc.set_index('Team')
+        print(next_round_wc)
 
         finals = ['round_of_16', 'quarterfinal', 'semifinal', 'final']
 
@@ -412,16 +421,16 @@ class WorldCUPPredictor:
                 newdata['points_diff'] = (home_points - away_points)
 
                 win_prob = model.predict_proba(newdata)[0]  #predict
-                #print(win_prob)
+                print(win_prob)
                 home_win_prob = win_prob[0]
                 away_win_prob = win_prob[1]
                 draw_prob = win_prob[2]
 
                 if home_win_prob < away_win_prob:
-                    print("{0} wins with probability {1:.6f}".format(away, away_win_prob + draw_prob))
+                    #print("{0} wins with probability {1:.6f}".format(away, away_win_prob + draw_prob))
                     winners.append(away)
                 else:
-                    print("{0} wins with probability {1:.6f}".format(home, home_win_prob + draw_prob))
+                    #print("{0} wins with probability {1:.6f}".format(home, home_win_prob + draw_prob))
                     winners.append(home)
 
                 labels.append("{}({:.2f}) vs. {}({:.6f})".format(wc_df.loc[home, 'Team'],
