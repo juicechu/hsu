@@ -30,9 +30,14 @@ class WorldCUPPredictor:
         ranking_df = ranking_df.replace({"IR Iran": "Iran"})
         ranking_df['rank_date'] = pd.to_datetime(ranking_df['rank_date'])
         ranking_df['country_full'] = ranking_df[['country_full']].replace({'Korea Republic': 'South Korea', 'Korea DPR': 'North Korea'})
-        print(ranking_df.head())
+        ranking_df.info()
         self.ranking_df = ranking_df;
 
+    def rank_write_to_mongodb(self):
+        mongo = MongoClient()
+        fifa_ranking = mongo.com6002.fifa_ranking
+        fifa_ranking.drop()
+        fifa_ranking.insert_many(self.ranking_df.to_dict('records'))
 
     def fifa_rank_and_point(self, x, name='home_team'):
         ranking_df = self.ranking_df
@@ -180,7 +185,6 @@ class WorldCUPPredictor:
         #plt.ax_.set_title('AUC score is {0:0.2}'.format(roc_auc_score(df_Y_test, model.predict_proba(df_X_test)[:,1])))
         #plt.ax_.set_aspect(1)
 
-        """
         # Support Vector Machines
         svc = SVC(random_state=12345)
         svc.fit(df_X_train, df_Y_train)
@@ -250,7 +254,6 @@ class WorldCUPPredictor:
                                display_labels=clf.classes_)
         disp.plot()
         disp.ax_.set_title('Neural Network Accuracy: ' + str(accuracy))
-        """
         model = logmodel
         return model
 
@@ -281,7 +284,7 @@ class WorldCUPPredictor:
         fifa_df = wc_df.apply(lambda x: self.team_fifa_data(x), axis=1, result_type='expand')
         wc_df = pd.concat([wc_df, fifa_df], axis=1)
         wc_df.set_index(['Team'], inplace=True, drop=False) #set index
-        #print(wc_df.head())
+        wc_df.info()
 
         print(model.classes_) #print classes order
         #margin = 0.05
@@ -434,6 +437,7 @@ class WorldCUPPredictor:
 matplotlib.use('Qt5Agg')
 p = WorldCUPPredictor()
 #p.write_to_mongodb()
+#p.rank_write_to_mongodb()
 model = p.train_model()
 wc_df = p.predict(model)
 p.predict_group(model, wc_df)
