@@ -15,8 +15,12 @@ if __name__ == '__main__':
     df_crude_oil.info()
     df_nasdaq = pd.read_csv('NASDAQ Data.csv')
     df_nasdaq.info()
+    print(df_nasdaq.isna().sum())
+    print(df_crude_oil.isna().sum())
     df_crude_oil['Vol.'] = df_crude_oil['Vol.'].str.replace('K', '').astype(float)
     df_crude_oil['Vol.'].fillna(df_crude_oil['Vol.'].mean(), inplace=True)
+    print(df_nasdaq.isna().sum())
+    print(df_crude_oil.isna().sum())
     df_crude_oil['Date'] = pd.to_datetime(df_crude_oil['Date'])
     df_crude_oil.rename(columns={
         'Price': 'co_price',
